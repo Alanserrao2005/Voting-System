@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>User Profile</title>
+  <style>
+    body {
+      font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+      background: linear-gradient(135deg, #4a00e0, #8e2de2);
+      min-height: 100vh;
+      padding: 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .profile-form {
+      background: rgba(255, 255, 255, 0.98);
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+      width Ascend Analyticswidth: 100%;
+      max-width: 640px;
+      backdrop-filter: blur(8px);
+      transition: transform 0.3s ease;
+    }
+
+    .profile-form:hover {
+      transform: translateY(-4px);
+    }
+
+    h2 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #4a00e0;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #333;
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      background: #f9f9f9;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #4a00e0;
+      box-shadow: 0 0 0 3px rgba(74, 0, 224, 0.1);
+      background: #ffffff;
+    }
+
+    .otp-section {
+      display: flex;
+      gap: 12px;
+      margin-top: 12px;
+      align-items: center;
+    }
+
+    button {
+      background: linear-gradient(90deg, #4a00e0, #8e2de2);
+      color: #ffffff;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      transition: background 0.3s ease, transform 0.2s ease;
+    }
+
+    button:hover {
+      background: linear-gradient(90deg, #8e2de2, #4a00e0);
+      transform: translateY(-2px);
+    }
+
+    button:disabled {
+      background: #cccccc;
+      cursor: not-allowed;
+    }
+
+    .error {
+      color: #e63946;
+      font-size: 13px;
+      margin-top: 8px;
+      font-weight: 500;
+    }
+
+    @media (max-width: 480px) {
+      .profile-form {
+        padding: 24px;
+      }
+
+      h2 {
+        font-size: 24px;
+      }
+
+      .otp-section {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="profile-form">
+    <h2>User Profile</h2>
+    <form id="profileForm">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="email" readonly>
+      </div>
+      
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="fullName" required>
+      </div>
+
+      <div class="form-group">
+        <label>Date of Birth</label>
+        <input type="date" id="dob" required>
+      </div>
+
+      <div class="form-group">
+        <label>Marital Status</label>
+        <select id="maritalStatus" required>
+          <option value="">Select</option>
+          <option value="Single">Single</option>
+          <option value="Married">Married</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Profession</label>
+        <select id="profession" required>
+          <option value="">Select</option>
+          <option value="Student">Student</option>
+          <option value="Employee">Employee</option>
+          <option value="Self-Employed">Self-Employed</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Voter ID</label>
+        <input type="text" id="voterId" pattern="[A-Za-z0-9]{10}" required>
+      </div>
+
+      <div class="form-group">
+        <label>Mobile Number</label>
+        <input type="tel" id="mobile" pattern="[0-9]{10}" required>
+        <div class="otp-section">
+          <button type="button" id="sendOtpBtn">Send OTP</button>
+          <input type="text" id="otp" placeholder="Enter OTP" disabled>
+        </div>
+        <p id="otp-error" class="error"></p>
+      </div>
+
+      <button type="submit" id="saveBtn" disabled>Save Profile</button>
+    </form>
+  </div>
+
+  <script>
+    const emailInput = document.getElementById('email');
+    const fullNameInput = document.getElementById('fullName');
+    const dobInput = document.getElementById('dob');
+    const maritalStatusInput = document.getElementById('maritalStatus');
+    const professionInput = document.getElementById('profession');
+    const voterIdInput = document.getElementById('voterId');
+    const mobileInput = document.getElementById('mobile');
+    const otpInput = document.getElementById('otp');
+    const otpError = document.getElementById('otp-error');
+    const sendOtpBtn = document.getElementById('sendOtpBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const profileForm = document.getElementById('profileForm');
+
+    let tempOtp = null;
+
+    // Check if user is logged in
+    const userEmail = localStorage.getItem('userEmail');
+    const userId = localStorage.getItem('userId');
+    if (!userEmail || !userId) {
+      alert('Please log in to access your profile.');
+      window.location.href = 'login.html';
+    } else {
+      emailInput.value = userEmail;
+      loadProfile();
+    }
+
+    // Load existing profile data
+    async function loadProfile() {
+      try {
+        const response = await fetch(`http://localhost:3000/api/profile?email=${userEmail}`);
+        const data = await response.json();
+        if (data.error) {
+          console.error('Error loading profile:', data.error);
+        } else if (data.profile) {
+          fullNameInput.value = data.profile.full_name || '';
+          dobInput.value = data.profile.date_of_birth || '';
+          maritalStatusInput.value = data.profile.marital_status || '';
+          professionInput.value = data.profile.profession || '';
+          voterIdInput.value = data.profile.voter_id || '';
+          mobileInput.value = data.profile.mobile || '';
+        }
+      } catch (err) {
+        console.error('Fetch error:', err);
+      }
+    }
+
+    // Send OTP (simulated)
+    function sendOTP() {
+      console.log('sendOTP called'); // Debug log
+      const mobile = mobileInput.value;
+      if (!/^\d{10}$/.test(mobile)) {
+        otpError.textContent = 'Please enter a valid 10-digit mobile number';
+        console.log('Invalid mobile number:', mobile); // Debug log
+        return;
+      }
+
+      // Generate 6-digit OTP
+      tempOtp = Math.floor(100000 + Math.random() * 900000);
+      console.log('Generated OTP:', tempOtp); // Debug log
+      alert(`OTP sent to ${mobile}: ${tempOtp}`); // Simulated OTP
+      otpInput.disabled = false;
+      sendOtpBtn.disabled = true;
+      otpError.textContent = '';
+    }
+
+    // Add event listener for Send OTP button
+    sendOtpBtn.addEventListener('click', () => {
+      console.log('Send OTP button clicked'); // Debug log
+      sendOTP();
+    });
+
+    // Enable Save button only after OTP is entered
+    otpInput.addEventListener('input', () => {
+      if (otpInput.value.length === 6) {
+        saveBtn.disabled = false;
+      } else {
+        saveBtn.disabled = true;
+      }
+    });
+
+    // Handle form submission
+    profileForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      if (otpInput.value != tempOtp) {
+        otpError.textContent = 'Invalid OTP!';
+        return;
+      }
+
+      const profileData = {
+        email: userEmail,
+        fullName: fullNameInput.value,
+        dob: dobInput.value,
+        maritalStatus: maritalStatusInput.value,
+        profession: professionInput.value,
+        voterId: voterIdInput.value,
+        mobile: mobileInput.value
+      };
+
+      try {
+        const response = await fetch('http://localhost:3000/api/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(profileData)
+        });
+        const data = await response.json();
+        if (data.error) {
+          alert('Error: ' + data.error);
+        } else {
+          alert('Profile saved successfully!');
+          window.close(); // Close the profile window
+        }
+      } catch (err) {
+        alert('Failed to save profile. Please try again.');
+        console.error('Save error:', err);
+      }
+    });
+  </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'933522e68ef64588',t:'MTc0NTE1NzI5NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

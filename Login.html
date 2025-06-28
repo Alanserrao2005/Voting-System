@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login & Sign-Up</title>
+  <style>
+    body {
+      font-family: 'Inter', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #4a00e0, #8e2de2);
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .container {
+      background: rgba(255, 255, 255, 0.95);
+      color: #1a1a1a;
+      width: 100%;
+      max-width: 400px;
+      padding: 32px;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      text-align: center;
+      backdrop-filter: blur(8px);
+      transition: transform 0.3s ease;
+    }
+
+    .container:hover {
+      transform: translateY(-4px);
+    }
+
+    h2 {
+      margin-bottom: 24px;
+      font-size: 28px;
+      font-weight: 700;
+      color: #4a00e0;
+      letter-spacing: -0.5px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+      text-align: left;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="password"] {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      background: #f9f9f9;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    input[type="text"]:focus,
+    input[type="email"]:focus,
+    input[type="password"]:focus {
+      outline: none;
+      border-color: #4a00e0;
+      box-shadow: 0 0 0 3px rgba(74, 0, 224, 0.1);
+      background: #ffffff;
+    }
+
+    .btn {
+      background: linear-gradient(90deg, #4a00e0, #8e2de2);
+      color: #ffffff;
+      padding: 12px;
+      width: 100%;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.3s ease, transform 0.2s ease;
+    }
+
+    .btn:hover {
+      background: linear-gradient(90deg, #8e2de2, #4a00e0);
+      transform: translateY(-2px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .toggle-link {
+      font-size: 14px;
+      color: #4a00e0;
+      text-decoration: none;
+      cursor: pointer;
+      margin-top: 16px;
+      display: inline-block;
+      font-weight: 500;
+      transition: color 0.3s ease;
+    }
+
+    .toggle-link:hover {
+      color: #8e2de2;
+      text-decoration: underline;
+    }
+
+    .error {
+      color: #e63946;
+      font-size: 13px;
+      margin-top: 8px;
+      font-weight: 500;
+    }
+
+    .forgot-password-link {
+      font-size: 14px;
+      color: #4a00e0;
+      text-decoration: none;
+      display: block;
+      margin-top: 12px;
+      font-weight: 500;
+      transition: color 0.3s ease;
+    }
+
+    .forgot-password-link:hover {
+      color: #8e2de2;
+      text-decoration: underline;
+    }
+
+    #otp-section, #reset-section {
+      display: none;
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 24px;
+        margin: 16px;
+      }
+
+      h2 {
+        font-size: 24px;
+      }
+
+      .btn {
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2 id="form-title">Login</h2>
+    <form id="auth-form">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="Enter your email" required>
+      </div>
+      <div class="form-group" id="password-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="Enter your password" required>
+      </div>
+      <p id="error-message" class="error"></p>
+      <button type="submit" class="btn" id="submit-btn">Login</button>
+      <a class="toggle-link" id="toggle-link">Don’t have an account? Sign Up</a>
+      <a class="forgot-password-link" id="forgot-password-link">Forgot password?</a>
+    </form>
+
+    <!-- OTP Section for password reset -->
+    <div id="otp-section">
+      <h3>Enter OTP</h3>
+      <input type="text" id="otp-input" placeholder="Enter OTP" required>
+      <button id="verify-otp" class="btn">Verify OTP</button>
+      <p id="otp-error" class="error"></p>
+    </div>
+
+    <!-- Reset password section -->
+    <div id="reset-section">
+      <h3>Reset Password</h3>
+      <input type="password" id="new-password" placeholder="Enter new password" required>
+      <button id="reset-password" class="btn">Reset Password</button>
+      <p id="reset-error" class="error"></p>
+    </div>
+  </div>
+
+  <script>
+    const formTitle = document.getElementById("form-title");
+    const toggleLink = document.getElementById("toggle-link");
+    const authForm = document.getElementById("auth-form");
+    const errorMessage = document.getElementById("error-message");
+    const forgotPasswordLink = document.getElementById("forgot-password-link");
+    const otpSection = document.getElementById("otp-section");
+    const resetSection = document.getElementById("reset-section");
+    const otpInput = document.getElementById("otp-input");
+    const otpError = document.getElementById("otp-error");
+    const newPasswordInput = document.getElementById("new-password");
+    const resetError = document.getElementById("reset-error");
+    const verifyOtpButton = document.getElementById("verify-otp");
+    const resetPasswordButton = document.getElementById("reset-password");
+    const submitBtn = document.getElementById("submit-btn");
+
+    let isSignUp = false;
+    let tempOtp = null;
+    let resetEmail = null;
+
+    // Toggle between Login and Sign-Up
+    toggleLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      isSignUp = !isSignUp;
+      console.log("Toggled to Sign-Up:", isSignUp); // Debug log
+      formTitle.textContent = isSignUp ? "Sign Up" : "Login";
+      submitBtn.textContent = isSignUp ? "Sign Up" : "Login";
+      toggleLink.textContent = isSignUp
+        ? "Already have an account? Login"
+        : "Don’t have an account? Sign Up";
+      errorMessage.textContent = "";
+      authForm.reset(); // Clear form inputs
+    });
+
+    // Handle form submission for Login/Signup
+    authForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      console.log("Form submitted, isSignUp:", isSignUp); // Debug log
+      if (isSignUp) {
+        const response = await fetch('http://localhost:3000/api/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await response.json();
+        if (data.error) {
+          errorMessage.textContent = data.error;
+        } else {
+          errorMessage.textContent = "Sign-up successful. Please login.";
+          isSignUp = false;
+          formTitle.textContent = "Login";
+          submitBtn.textContent = "Login";
+          toggleLink.textContent = "Don’t have an account? Sign Up";
+          authForm.reset();
+        }
+      } else {
+        const response = await fetch('http://localhost:3000/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await response.json();
+        if (data.error) {
+          errorMessage.textContent = data.error;
+        } else {
+          localStorage.setItem('userEmail', email);
+          localStorage.setItem('userId', data.user.id);
+          window.location.href = "main.html";
+        }
+      }
+    });
+
+    // Forgot Password logic
+    forgotPasswordLink.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("email").value;
+
+      if (!email) {
+        errorMessage.textContent = "Please enter your email.";
+        return;
+      }
+
+      // Simulate OTP generation (in a real app, this would be sent via email)
+      tempOtp = Math.floor(1000 + Math.random() * 9000); // 4-digit OTP
+      resetEmail = email;
+      alert(`An OTP has been sent to your email: ${tempOtp}`); // Simulated OTP
+
+      authForm.style.display = "none";
+      otpSection.style.display = "block";
+    });
+
+    // OTP Verification
+    verifyOtpButton.addEventListener("click", () => {
+      const enteredOtp = otpInput.value;
+
+      if (enteredOtp == tempOtp) {
+        otpError.textContent = "";
+        otpSection.style.display = "none";
+        resetSection.style.display = "block";
+      } else {
+        otpError.textContent = "Invalid OTP. Please try again.";
+      }
+    });
+
+    // Reset Password Logic
+    resetPasswordButton.addEventListener("click", async () => {
+      const newPassword = newPasswordInput.value;
+
+      if (newPassword && resetEmail) {
+        const response = await fetch('http://localhost:3000/api/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: resetEmail, newPassword })
+        });
+        const data = await response.json();
+        if (data.error) {
+          resetError.textContent = data.error;
+        } else {
+          resetError.textContent = "";
+          alert("Password reset successful. You can now log in with your new password.");
+          window.location.href = "login.html";
+        }
+      } else {
+        resetError.textContent = "Please enter a new password.";
+      }
+    });
+  </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'933522e5f92a4533',t:'MTc0NTE1NzI5NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

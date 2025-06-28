@@ -1,0 +1,692 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Online Voting System</title>
+  <style>
+    body {
+      font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #4a00e0, #8e2de2);
+      color: #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .navbar {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.98);
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: fixed;
+      top: 0;
+      z-index: 1000;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(12px);
+    }
+
+    .navbar a {
+      color: #1a1a1a;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 600;
+      margin-left: 32px;
+      transition: color 0.3s ease;
+      position: relative;
+    }
+
+    .navbar a:hover {
+      color: #4a00e0;
+    }
+
+    .navbar a::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: #4a00e0;
+      transition: width 0.3s ease;
+    }
+
+    .navbar a:hover::after {
+      width: 100%;
+    }
+
+    .navbar .logo {
+      font-size: 26px;
+      font-weight: 800;
+      color: #4a00e0;
+      letter-spacing: 0.5px;
+    }
+
+    .profile-container {
+      position: relative;
+      margin-right: 16px;
+    }
+
+    .profile-icon {
+      cursor: pointer;
+      font-size: 24px;
+      padding: 10px;
+      border-radius: 50%;
+      transition: background 0.3s ease;
+    }
+
+    .profile-icon:hover {
+      background: rgba(74, 0, 224, 0.1);
+    }
+
+    .profile-dropdown {
+      position: absolute;
+      right: 0;
+      top: 48px;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+      display: none;
+      width: 180px;
+      z-index: 1000;
+      overflow: hidden;
+    }
+
+    .profile-dropdown.active {
+      display: block;
+    }
+
+    .profile-dropdown a {
+      display: block;
+      padding: 12px 16px;
+      color: #1a1a1a;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.3s ease;
+    }
+
+    .profile-dropdown a:hover {
+      background: #f8f9fa;
+    }
+
+    .container {
+      background: rgba(255, 255, 255, 0.98);
+      width: 90%;
+      max-width: 1280px;
+      padding: 48px;
+      border-radius: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+      margin-top: 120px;
+      animation: fadeInUp 0.6s ease-out;
+      backdrop-filter: blur(10px);
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h2 {
+      font-size: 34px;
+      font-weight: 700;
+      color: #4a00e0;
+      margin-bottom: 24px;
+      text-align: center;
+      letter-spacing: -0.5px;
+    }
+
+    .vote-option {
+      margin: 24px auto;
+      padding: 24px;
+      background: #ffffff;
+      border-radius: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      max-width: 960px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    }
+
+    .vote-option:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    .vote-button {
+      background: linear-gradient(90deg, #4a00e0, #8e2de2);
+      color: #ffffff;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      transition: background 0.3s ease, transform 0.2s ease;
+    }
+
+    .vote-button:hover {
+      background: linear-gradient(90deg, #8e2de2, #4a00e0);
+      transform: translateY(-2px);
+    }
+
+    .vote-button:disabled {
+      background: #cccccc;
+      cursor: not-allowed;
+    }
+
+    .countdown-timer {
+      font-size: 18px;
+      font-weight: 600;
+      color: #4a00e0;
+      margin-top: 24px;
+      text-align: center;
+    }
+
+    .results-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .result-bar {
+      width: 100%;
+      max-width: 960px;
+      background: #ffffff;
+      border-radius: 16px;
+      margin: 12px 0;
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+      transition: transform 0.3s ease;
+    }
+
+    .result-bar:hover {
+      transform: translateY(-2px);
+    }
+
+    .result-bar span {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a1a1a;
+      min-width: 120px;
+    }
+
+    .result-bar .progress {
+      height: 20px;
+      background: linear-gradient(90deg, #4a00e0, #8e2de2);
+      border-radius: 10px;
+      transition: width 1s ease-in-out;
+      margin: 0 24px;
+      flex-grow: 1;
+    }
+
+    .feedback-container {
+      background: linear-gradient(135deg, #4a00e0, #8e2de2);
+      color: #ffffff;
+      padding: 48px;
+      border-radius: 24px;
+      margin: 48px -48px -48px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    }
+
+    .feedback-form {
+      display: grid;
+      gap: 24px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .feedback-form input,
+    .feedback-form textarea {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      background: rgba(255, 255, 255, 0.95);
+      transition: background 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .feedback-form input:focus,
+    .feedback-form textarea:focus {
+      background: #ffffff;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(74, 0, 224, 0.2);
+    }
+
+    .feedback-form button {
+      background: #ffffff;
+      color: #4a00e0;
+      padding: 16px 32px;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .feedback-form button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    .candidate-card {
+      display: flex;
+      align-items: center;
+      padding: 24px;
+      margin: 20px 0;
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: cardEntry 0.6s ease forwards;
+    }
+
+    .candidate-card:nth-child(2) { animation-delay: 0.2s; }
+    .candidate-card:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes cardEntry {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .candidate-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    .candidate-photo {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      margin-right: 24px;
+      object-fit: cover;
+      border: 3px solid #4a00e0;
+      transition: transform 0.3s ease;
+    }
+
+    .candidate-card:hover .candidate-photo {
+      transform: scale(1.05);
+    }
+
+    .candidate-info {
+      flex: 1;
+    }
+
+    .candidate-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: #4a00e0;
+      margin-bottom: 8px;
+    }
+
+    .candidate-description {
+      font-size: 15px;
+      color: #555;
+      line-height: 1.6;
+    }
+
+    .footer {
+      margin-top: 64px;
+      text-align: center;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 500;
+      opacity: 0.9;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        width: 95%;
+        padding: 32px;
+      }
+
+      .navbar {
+        padding: 12px 16px;
+      }
+
+      .navbar a {
+        margin-left: 16px;
+        font-size: 14px;
+      }
+
+      .vote-option {
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .result-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .result-bar .progress {
+        margin: 12px 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <div class="logo">VotePro</div>
+    <div>
+      <a href="#home" id="home-link">Home</a>
+      <a href="#about" id="about-link">About Us</a>
+      <a href="#vote" id="vote-link">Vote</a>
+      <a href="#results" id="results-link">Results</a>
+      <a href="#feedback" id="feedback-link">Feedback</a>
+    </div>
+    <div class="profile-container">
+      <span class="profile-icon" onclick="toggleDropdown()">👤</span>
+      <div class="profile-dropdown" id="profile-dropdown">
+        <a href="profile.html" target="_blank">Account</a>
+        <a href="#" onclick="alert('Settings clicked')">Settings</a>
+        <a href="#" onclick="logout()">Logout</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="home" class="container">
+    <h2>Welcome to VotePro</h2>
+    <p>Your trusted platform for secure and transparent online voting. Learn about the candidates below:</p>
+    <div class="candidates-grid">
+      <div class="candidate-card">
+        <img src="https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100&q=80" alt="Candidate A" class="candidate-photo">
+        <div class="candidate-info">
+          <div class="candidate-name">Candidate A</div>
+          <div class="candidate-description">A visionary leader with a focus on education and healthcare reform.</div>
+        </div>
+      </div>
+      <div class="candidate-card">
+        <img src="https://images.unsplash.com/photo-1573497019236-17f8177b81e8?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100&q=80" alt="Candidate B" class="candidate-photo">
+        <div class="candidate-info">
+          <div class="candidate-name">Candidate B</div>
+          <div class="candidate-description">An advocate for economic growth and environmental sustainability.</div>
+        </div>
+      </div>
+      <div class="candidate-card">
+        <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100&q=80" alt="Candidate C" class="candidate-photo">
+        <div class="candidate-info">
+          <div class="candidate-name">Candidate C</div>
+          <div class="candidate-description">A tech innovator pushing for digital transformation and smart cities.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="about" class="container" style="display: none;">
+    <h2>About Us</h2>
+    <div class="about-content">
+      <p>VotePro is a platform designed to simplify and secure the online voting process. We prioritize transparency, accuracy, and fairness in every election.</p>
+      <p>We aim to make voting accessible to all citizens, offering a seamless experience from registration to final results.</p>
+    </div>
+  </div>
+
+  <div id="vote" class="container" style="display: none;">
+    <h2>Cast Your Vote</h2>
+    <div id="terms-and-conditions" style="display: block;">
+      <p>Please read and accept the terms and conditions of online voting:</p>
+      <p>By casting your vote, you acknowledge that you have understood the terms and conditions.</p>
+      <p>You have only one vote, and once cast, it cannot be changed.</p>
+      <button id="accept-terms" onclick="acceptTerms()">Accept Terms and Conditions</button>
+    </div>
+    <div id="voting-options" style="display: none;">
+      <p id="countdown-to-vote"></p>
+      <div class="vote-option">
+        <div>Candidate A</div>
+        <button class="vote-button" onclick="vote('Candidate A')" disabled>Vote</button>
+      </div>
+      <div class="vote-option">
+        <div>Candidate B</div>
+        <button class="vote-button" onclick="vote('Candidate B')" disabled>Vote</button>
+      </div>
+      <div class="vote-option">
+        <div>Candidate C</div>
+        <button class="vote-button" onclick="vote('Candidate C')" disabled>Vote</button>
+      </div>
+      <div class="countdown-timer" id="countdown"></div>
+      <p id="countdown-message"></p>
+    </div>
+  </div>
+
+  <div id="results" class="container" style="display: none;">
+    <h2>Election Results</h2>
+    <div class="results-container">
+      <div class="result-bar">
+        <span>Candidate A</span>
+        <div class="progress" id="candidatea-progress"></div>
+        <p id="candidatea-votes">0 votes (0%)</p>
+      </div>
+      <div class="result-bar">
+        <span>Candidate B</span>
+        <div class="progress" id="candidateb-progress"></div>
+        <p id="candidateb-votes">0 votes (0%)</p>
+      </div>
+      <div class="result-bar">
+        <span>Candidate C</span>
+        <div class="progress" id="candidatec-progress"></div>
+        <p id="candidatec-votes">0 votes (0%)</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="feedback" class="container" style="display: none;">
+    <h2>Feedback</h2>
+    <div class="feedback-section">
+      <h3>We Value Your Feedback</h3>
+      <p>Please share your thoughts and suggestions:</p>
+      <div class="feedback-container">
+        <form class="feedback-form" id="feedback-form">
+          <input type="text" id="feedback-name" placeholder="Your Name" required>
+          <input type="email" id="feedback-email" placeholder="Your Email" required>
+          <textarea id="feedback-message" placeholder="Your Feedback" required></textarea>
+          <button type="submit">Submit Feedback</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>© 2025 VotePro. All rights reserved.</p>
+  </div>
+
+  <script>
+    // Toggle Profile Dropdown
+    function toggleDropdown() {
+      document.getElementById('profile-dropdown').classList.toggle('active');
+    }
+
+    // Logout Function
+    function logout() {
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('userId');
+      alert("You have logged out.");
+      window.location.href = "login.html";
+    }
+
+    // Vote Function
+    let userVote = null;
+    let timerInterval;
+
+    async function vote(candidate) {
+      const userId = localStorage.getItem('userId');
+      if (!userId) {
+        alert("Please log in to vote.");
+        window.location.href = "login.html";
+        return;
+      }
+
+      const response = await fetch('http://localhost:3000/api/vote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, candidate })
+      });
+      const data = await response.json();
+      if (data.error) {
+        alert(data.error);
+      } else {
+        userVote = candidate;
+        alert(`Vote cast for ${candidate}`);
+        clearInterval(timerInterval);
+        document.getElementById('countdown').innerHTML = "Vote Submitted";
+        document.querySelectorAll('.vote-button').forEach(button => button.disabled = true);
+        updateResultsFromServer();
+      }
+    }
+
+    // Fetch and Update Results
+    async function updateResultsFromServer() {
+      const response = await fetch('http://localhost:3000/api/results');
+      const results = await response.json();
+      const totalVotes = results.reduce((sum, r) => sum + r.vote_count, 0);
+
+      results.forEach(result => {
+        const candidateKey = result.candidate.toLowerCase().replace(' ', '');
+        const progressBar = document.getElementById(`${candidateKey}-progress`);
+        const votesElement = document.getElementById(`${candidateKey}-votes`);
+        const percentage = totalVotes === 0 ? 0 : (result.vote_count / totalVotes) * 100;
+        progressBar.style.width = `${percentage}%`;
+        votesElement.textContent = `${result.vote_count} vote${result.vote_count !== 1 ? 's' : ''} (${percentage.toFixed(1)}%)`;
+      });
+    }
+
+    // Accept Terms and Conditions
+    function acceptTerms() {
+      document.getElementById('terms-and-conditions').style.display = 'none';
+      document.getElementById('voting-options').style.display = 'block';
+
+      let countdownToVote = 5;
+      const countdownToVoteElement = document.getElementById('countdown-to-vote');
+      countdownToVoteElement.innerHTML = `You can vote in ${countdownToVote} seconds`;
+
+      const interval = setInterval(function() {
+        countdownToVote--;
+        countdownToVoteElement.innerHTML = `You can vote in ${countdownToVote} seconds`;
+
+        if (countdownToVote <= 0) {
+          clearInterval(interval);
+          countdownToVoteElement.innerHTML = 'Voting Started!';
+          document.querySelectorAll('.vote-button').forEach(button => button.disabled = false);
+          startCountdown();
+        }
+      }, 1000);
+    }
+
+    // Countdown Timer
+    function startCountdown() {
+      let timeLeft = 10;
+      const countdownElement = document.getElementById('countdown');
+      countdownElement.innerHTML = `${timeLeft}s`;
+      document.getElementById('countdown-message').innerHTML = 'Please cast your vote before the timer runs out!';
+
+      timerInterval = setInterval(function () {
+        timeLeft--;
+        countdownElement.innerHTML = `${timeLeft}s`;
+
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          countdownElement.innerHTML = "Voting Closed";
+          document.getElementById('countdown-message').innerHTML = '';
+          document.querySelectorAll('.vote-button').forEach(button => button.disabled = true);
+          if (!userVote) alert("You did not cast a vote.");
+        }
+      }, 1000);
+    }
+
+    // Feedback Submission
+    document.getElementById('feedback-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const userId = localStorage.getItem('userId');
+      const name = document.getElementById('feedback-name').value;
+      const email = document.getElementById('feedback-email').value;
+      const message = document.getElementById('feedback-message').value;
+
+      const response = await fetch('http://localhost:3000/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, name, email, message })
+      });
+      const data = await response.json();
+      if (data.error) alert(data.error);
+      else {
+        alert('Feedback submitted successfully!');
+        document.getElementById('feedback-form').reset();
+      }
+    });
+
+    // Page Navigation
+    function showPage(page) {
+      const pages = ['home', 'about', 'vote', 'results', 'feedback'];
+      pages.forEach(p => {
+        document.getElementById(p).style.display = p === page ? 'block' : 'none';
+      });
+      if (page === 'results') updateResultsFromServer();
+    }
+
+    document.getElementById('home-link').addEventListener('click', () => showPage('home'));
+    document.getElementById('about-link').addEventListener('click', () => showPage('about'));
+    document.getElementById('vote-link').addEventListener('click', () => showPage('vote'));
+    document.getElementById('results-link').addEventListener('click', () => showPage('results'));
+    document.getElementById('feedback-link').addEventListener('click', () => showPage('feedback'));
+
+    // Initialize
+    showPage('home');
+    if (!localStorage.getItem('userId')) {
+      alert("Please log in to continue.");
+      window.location.href = "login.html";
+    }
+  </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'933522e68c406769',t:'MTc0NTE1NzI5NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
